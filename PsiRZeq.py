@@ -315,6 +315,40 @@ class PsiRZeq:
         }
 
 
+    def get_SOFT(self, nr=80, nz=100):
+        """
+        Returns equilibrium data in the SOFT equilibrium format.
+        """
+        # Generate R/Z grid
+        _R = np.linspace(np.amin(self.rlim), np.amax(self.rlim))
+        _Z = np.linspace(np.amin(self.zlim), np.amax(self.zlim))
+
+        R, Z = np.meshgrid(_R, _Z)
+
+        Bphi = self.get_Btor(R, Z)
+        Br   = self.get_Br(R, Z)
+        Bz   = self.get_Bz(R, Z)
+
+        maxis = np.array([self.R0, self.Z0])
+        desc = 'cpteqget'
+        name = 'cpteqget'
+
+        separatrix = np.array([self.lcfs_R, self.lcfs_Z]).T
+        wall = np.array([self.rlim, self.zlim]).T
+
+        verBphi = Bphi[0,:]
+        verBr   = Br[0,:]
+        verBz   = Bz[0,:]
+
+        return {
+            'Bphi': Bphi, 'Br': Br, 'Bz': Bz,
+            'desc': desc, 'name': name, 'maxis': maxis,
+            'r': R, 'z': Z,
+            'separatrix': separatrix, 'wall': wall,
+            'verBphi': verBphi, 'verBr': verBr, 'verBz': verBz
+        }
+
+
     def save_eq_parameters(self, filename, nr=40):
         """
         Save the DREAM analytical equilibrium parameters corresponding to this
@@ -338,10 +372,21 @@ class PsiRZeq:
         equil = self.get_LUKE(npsi=npsi, ntheta=ntheta)
 
         with h5py.File(filename, 'w') as f:
-            f.create_group('equil')
+            g = f.create_group('equil')
 
-            for key in equil.keys():
-                f[f'equil/{key}'] = equil[key]
+            for key, val in equil.items():
+                g[key] = val
+
+
+    def save_SOFT(self, filename, nr=80, nz=100):
+        """
+        Save this equilibrium in a SOFT compatible equilibrium file.
+        """
+        equil = self.get_SOFT(nr=nr, nz=nz)
+        
+        with h5py.File(filename, 'w') as f:
+            for key, val in equil.items():
+                f[key] = val
 
 
     def _R_midplane(self, R, Z):
