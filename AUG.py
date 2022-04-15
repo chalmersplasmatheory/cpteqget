@@ -2,7 +2,7 @@
 import h5py
 import numpy as np
 import sys
-import eqhelpers
+from . import eqhelpers
 
 try:
     sys.path.append('/afs/ipp/aug/ads-diags/common/python/lib')
