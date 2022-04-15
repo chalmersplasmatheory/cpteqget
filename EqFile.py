@@ -1,8 +1,8 @@
 # Load equilibrium data from a file.
 
 import numpy as np
-import eqhelpers
 
+from . import eqhelpers
 from . LUKEMagneticField import LUKEMagneticField
 from . GEQDSK import GEQDSK
 

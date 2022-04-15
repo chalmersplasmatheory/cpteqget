@@ -1,10 +1,18 @@
 # An equilibrium which only requires psi, R, Z (and rlim/zlim) as input.
 
 
+import h5py
 from matplotlib._contour import QuadContourGenerator
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import CubicSpline, InterpolatedUnivariateSpline, RectBivariateSpline
+
+
+class NoContourError(Exception):
+    
+
+    def __init__(self, msg):
+        super().__init__(msg)
 
 
 class PsiRZeq:
@@ -50,7 +58,7 @@ class PsiRZeq:
         self.G = InterpolatedUnivariateSpline(self._G_psi_n, self._G)
 
         # Set up contour generator
-        psi2d  = self.psi(self._R, self._Z).T
+        psi2d  = self._psi.T
         psin2d = (psi2d - self.psi0) / (self.psia-self.psi0)
         R, Z = np.meshgrid(self._R, self._Z)
         self.contour_generator = QuadContourGenerator(R, Z, psin2d, None, True, 0)
@@ -87,6 +95,9 @@ class PsiRZeq:
         Trace the flux surface for the given normalized psi.
         """
         vertices = self.contour_generator.create_contour(psi_n)
+
+        if len(vertices) == 0:
+            raise NoContourError(f"No contours found for psi_n = {psi_n}.")
         
         # Find the contour which is "the most" closed
         # (since this is probably the only closed flux surface we're
@@ -293,13 +304,25 @@ class PsiRZeq:
         theta = np.linspace(0, 2*np.pi, ntheta)
         psi_n = np.linspace(0, 1, npsi+1)[1:]
 
-        Rp, Zp = self.R0, self.Z0
-        psi_apRp = 2*np.pi * self.psi(Rp+self.r(psi_n), Zp) * self.a_minor / Rp
-
         ptx = np.zeros((psi_n.size, ntheta))
         pty = np.zeros((psi_n.size, ntheta))
+        invalid = None
         for i in range(npsi):
-            ptx[i,:], pty[i,:] = self.get_flux_surface(psi_n[i], theta=theta)
+            try:
+                ptx[i,:], pty[i,:] = self.get_flux_surface(psi_n[i], theta=theta)
+            except NoContourError:
+                invalid = i
+
+        # Remove invalid radii
+        if invalid is not None:
+            psi_n = psi_n[(invalid+1):]
+            ptx = ptx[(invalid+1):,:]
+            pty = pty[(invalid+1):,:]
+
+        Rp, Zp = self.R0, self.Z0
+        x = Rp+self.r(psi_n)
+        y = Zp*np.ones(x.shape)
+        psi_apRp = 2*np.pi * self.psi(x, y, grid=False) * self.a_minor / Rp
 
         ptBx = self.get_Br(ptx, pty)
         ptBy = self.get_Bz(ptx, pty)
